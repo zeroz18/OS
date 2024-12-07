@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mini OS</title>
+    <hta:application 
+        applicationname="MiniOS"
+        border="none"
+        caption="no"
+        maximizebutton="no"
+        minimizebutton="no"
+        sysmenu="no"
+        scroll="no"
+    />
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: "Tahoma", Arial, sans-serif;
+            background-color: #0080ff;
+        }
+        #desktop {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        #taskbar {
+            height: 40px;
+            background: linear-gradient(to bottom, #3a6ea5, #2b5797);
+            color: white;
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border-top: 2px solid #1c478b;
+            justify-content: space-between;
+        }
+        #startMenu {
+            position: absolute;
+            bottom: 40px;
+            left: 10px;
+            background-color: white;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            display: none;
+            flex-direction: column;
+        }
+        #startMenu button {
+            padding: 10px;
+            text-align: left;
+            border: none;
+            width: 150px;
+            background: none;
+            cursor: pointer;
+        }
+        #startMenu button:hover {
+            background-color: #e0e0e0;
+        }
+        .app-icon {
+            width: 60px;
+            height: 60px;
+            margin: 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+        }
+        .app-icon img {
+            width: 100%;
+            height: 100%;
+        }
+        .app-icon span {
+            text-align: center;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .app-window {
+            width: 600px;
+            height: 400px;
+            background-color: white;
+            border: 2px solid #a6caf0;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.2);
+            position: absolute;
+            display: none;
+            flex-direction: column;
+            z-index: 10;
+        }
+        .app-header {
+            background: linear-gradient(to bottom, #e8e8e8, #d4d0c8);
+            padding: 5px;
+            cursor: move;
+            border-bottom: 1px solid #a6caf0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .app-body {
+            flex-grow: 1;
+            padding: 10px;
+        }
+        .app-notepad textarea {
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            font-family: "Courier New", Courier, monospace;
+            border: none;
+            outline: none;
+        }
+        .close-btn {
+            background: none;
+            border: none;
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #333;
+            cursor: pointer;
+        }
+        .close-btn:hover {
+            color: red;
+        }
+        .search-bar {
+            flex-grow: 1;
+            margin: 0 10px;
+        }
+        .search-bar input {
+            width: 100%;
+            padding: 5px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        .time-display {
+            font-size: 16px;
+        }
+        /* App Manager Styles */
+        #appManager {
+            width: 400px;
+            height: 300px;
+            background: white;
+            border: 2px solid #a6caf0;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.2);
+            position: absolute;
+            display: none;
+            top: 20%;
+            left: 30%;
+            flex-direction: column;
+            z-index: 15;
+            padding: 10px;
+        }
+        .app-manager-header {
+            background: #e8e8e8;
+            padding: 5px;
+            cursor: move;
+            border-bottom: 1px solid #a6caf0;
+            display: flex;
+            justify-content: space-between;
+        }
+        .app-manager-body {
+            flex-grow: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
+        .app-item {
+            margin-bottom: 10px;
+        }
+        .app-item span {
+            margin-right: 10px;
+        }
+        .remove-btn {
+            background-color: #f44336;
+            color: white;
+            padding: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 3px;
+        }
+        .remove-btn:hover {
+            background-color: #d32f2f;
+        }
+    </style>
+    <script>
+        let apps = {
+            notepad: {
+                id: 'appNotepad',
+                name: 'Notepad',
+                content: ''
+            },
+            addApp: {
+                id: 'appAddApp',
+                name: 'Add App',
+                content: ''
+            }
+        };
+
+        function toggleStartMenu() {
+            const startMenu = document.getElementById('startMenu');
+            startMenu.style.display = startMenu.style.display === 'none' ? 'flex' : 'none';
+        }
+
+        function openApp(appId) {
+            const appWindow = document.getElementById(appId);
+            appWindow.style.display = 'flex';
+            appWindow.style.zIndex = getNextZIndex();
+            updateTaskbar();
+        }
+
+        function closeApp(appId) {
+            document.getElementById(appId).style.display = 'none';
+            updateTaskbar();
+        }
+
+        function getNextZIndex() {
+            let maxZ = 0;
+            const elements = document.querySelectorAll('.app-window');
+            elements.forEach(el => {
+                const z = parseInt(window.getComputedStyle(el).zIndex, 10);
+                if (z > maxZ) {
+                    maxZ = z;
+                }
+            });
+            return maxZ + 1;
+        }
+
+        function saveText() {
+            const fso = new ActiveXObject("Scripting.FileSystemObject");
+            const file = fso.CreateTextFile("C:\\path\\to\\file.txt", true);
+            file.WriteLine(document.querySelector('#appNotepad textarea').value);
+            file.Close();
+            alert('File saved!');
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const timeDisplay = document.getElementById('timeDisplay');
+            timeDisplay.textContent = now.toLocaleTimeString();
+        }
+
+        function updateTaskbar() {
+            const taskbar = document.getElementById('taskbarApps');
+            taskbar.innerHTML = '';
+            const openApps = document.querySelectorAll('.app-window');
+            openApps.forEach(app => {
+                if (app.style.display === 'flex') {
+                    const button = document.createElement('button');
+                    button.textContent = app.querySelector('.app-header').textContent.trim();
+                    button.onclick = () => openApp(app.id);
+                    taskbar.appendChild(button);
+                }
+            });
+        }
+
+        function searchApps() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const startMenu = document.getElementById('startMenu');
+            startMenu.innerHTML = '';
+            Object.keys(apps).forEach(key => {
+                if (apps[key].name.toLowerCase().includes(query)) {
+                    const button = document.createElement('button');
+                    button.textContent = apps[key].name;
+                    button.onclick = () => openApp(apps[key].id);
+                    startMenu.appendChild(button);
+                }
+            });
+        }
+
+        function addApp() {
+            const appName = document.getElementById('appName').value;
+            const appContent = document.getElementById('appContent').value;
+
+            if (appName && appContent) {
+                const appId = 'app' + appName.replace(/\s+/g, '');
+                apps[appName.toLowerCase()] = {
+                    id: appId,
+                    name: appName,
+                    content: appContent
+                };
+
+                const appWindow = document.createElement('div');
+                appWindow.id = appId;
+                appWindow.className = 'app-window';
+                appWindow.innerHTML = `
+                    <div class="app-header">
+                        ${appName}
+                        <button class="close-btn" onclick="closeApp('${appId}')">X</button>
+                    </div>
+                    <div class="app-body">${appContent}</div>
+                `;
+                document.body.appendChild(appWindow);
+
+                const appIcon = document.createElement('div');
+                appIcon.className = 'app-icon';
+                appIcon.innerHTML = `
+                    <img src="generic-app-icon.png" alt="${appName}">
+                    <span>${appName}</span>
+                `;
+                appIcon.onclick = () => openApp(appId);
+                document.getElementById('content').appendChild(appIcon);
+
+                document.getElementById('addAppForm').reset();
+            } else {
+                alert('Please provide both a name and content for the app.');
+            }
+        }
+
+        function openAppManager() {
+            const appManager = document.getElementById('appManager');
+            appManager.style.display = appManager.style.display === 'none' ? 'flex' : 'none';
+            updateAppManager();
+        }
+
+        function updateAppManager() {
+            const appManagerBody = document.getElementById('appManagerBody');
+            appManagerBody.innerHTML = '';
+
+            Object.keys(apps).forEach(key => {
+                const app = apps[key];
+                const appItem = document.createElement('div');
+                appItem.className = 'app-item';
+
+                const appSize = new Blob([app.content]).size; // Taille de l'app en octets
+
+                appItem.innerHTML = `
+                    <span>${app.name} (Taille: ${appSize} octets)</span>
+                    <button class="remove-btn" onclick="removeApp('${app.id}')">Supprimer</button>
+                `;
+
+                appManagerBody.appendChild(appItem);
+            });
+        }
+
+        function removeApp(appId) {
+            const app = apps[appId];
+            if (app) {
+                delete apps[appId]; // Supprime l'application des données
+                document.getElementById(appId).remove(); // Supprime la fenêtre de l'application
+                updateTaskbar(); // Met à jour la barre des tâches
+                updateAppManager(); // Met à jour le gestionnaire d'applications
+            }
+        }
+
+        setInterval(updateTime, 1000);
+
+        document.onmousedown = function(e) {
+            const target = e.target.closest('.app-header');
+            if (!target) return;
+
+            const appWindow = target.parentElement;
+            const offsetX = e.clientX - appWindow.getBoundingClientRect().left;
+            const offsetY = e.clientY - appWindow.getBoundingClientRect().top;
+
+            function moveAt(event) {
+                appWindow.style.left = event.pageX - offsetX + 'px';
+                appWindow.style.top = event.pageY - offsetY + 'px';
+            }
+
+            document.addEventListener('mousemove', moveAt);
+
+            appWindow.onmouseup = function() {
+                document.removeEventListener('mousemove', moveAt);
+                appWindow.onmouseup = null;
+            };
+        };
+    </script>
+</head>
+<body onload="updateTime(); searchApps()">
+    <div id="desktop">
+        <div id="taskbar">
+            <div style="display: flex; align-items: center;">
+                <button onclick="toggleStartMenu()">Start</button>
+                <div class="search-bar">
+                    <input id="searchInput" type="text" onkeyup="searchApps()" placeholder="Search for apps...">
+                </div>
+                <button onclick="openAppManager()">App Manager</button>
+            </div>
+            <div id="taskbarApps"></div>
+            <div class="time-display" id="timeDisplay"></div>
+        </div>
+        <div id="content" style="flex-grow: 1; display: flex; flex-wrap: wrap;">
+            <div class="app-icon" onclick="openApp('appNotepad')">
+                <img src="notepad-icon.png" alt="Notepad">
+                <span>Notepad</span>
+            </div>
+            <div class="app-icon" onclick="openApp('appAddApp')">
+                <img src="add-app-icon.png" alt="Add App">
+                <span>Add App</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Windows -->
+    <div id="appNotepad" class="app-window">
+        <div class="app-header">
+            Notepad
+            <button class="close-btn" onclick="closeApp('appNotepad')">X</button>
+        </div>
+        <div class="app-body app-notepad">
+            <textarea></textarea>
+        </div>
+    </div>
+    <div id="appAddApp" class="app-window">
+        <div class="app-header">
+            Add App
+            <button class="close-btn" onclick="closeApp('appAddApp')">X</button>
+        </div>
+        <div class="app-body">
+            <form id="addAppForm">
+                <label for="appName">App Name:</label>
+                <input type="text" id="appName" name="appName"><br><br>
+                <label for="appContent">App Content (HTML):</label><br>
+                <textarea id="appContent" name="appContent" rows="10" cols="50"></textarea><br><br>
+                <button type="button" onclick="addApp()">Add App</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Manager Window -->
+    <div id="appManager">
+        <div class="app-manager-header">
+            App Manager
+            <button class="close-btn" onclick="document.getElementById('appManager').style.display='none'">X</button>
+        </div>
+        <div id="appManagerBody" class="app-manager-body">
+            <!-- Dynamically filled with apps -->
+        </div>
+    </div>
+</body>
+</html>
