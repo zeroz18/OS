@@ -2,8 +2,8 @@
 This is an html os... 
 
 ## Links :
-            <a href='https://github.com/zeroz18/OS' target='_BLANK'>Github</a>
-            <a href='https://www.youtube.com/channel/UCaDeSaY89UZHixHTJvYgKFA' target='_BLANK'>YouTube</a>
+ <a href='https://github.com/zeroz18/OS' target='_BLANK'>Github</a>
+ <a href='https://www.youtube.com/channel/UCaDeSaY89UZHixHTJvYgKFA' target='_BLANK'>YouTube</a>
             
 ## Patch notes: 
 
